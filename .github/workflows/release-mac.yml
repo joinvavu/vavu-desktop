@@ -1,0 +1,113 @@
+# Builds the VAVU desktop installers and publishes them as a GitHub Release.
+#   Windows: VAVU_<v>_x64-setup.exe (+ .msi)     Mac: VAVU_<v>_universal.dmg (Apple Silicon + Intel)
+# joinvavu.com/download always links to the latest release.
+#
+# Run it: push a tag like v1.0.1, or Actions → "Release VAVU desktop" → Run workflow.
+#
+# Optional secrets (add them in GitHub → Settings → Secrets and variables → Actions).
+# Without them the build still works, but the installers are unsigned (Windows SmartScreen /
+# macOS "unidentified developer" warnings) and the app can't auto-update.
+#   Auto-update:  TAURI_SIGNING_PRIVATE_KEY, TAURI_SIGNING_PRIVATE_KEY_PASSWORD  + variable TAURI_UPDATER_PUBKEY
+#   Mac signing:  APPLE_CERTIFICATE (base64 .p12), APPLE_CERTIFICATE_PASSWORD, APPLE_SIGNING_IDENTITY,
+#                 APPLE_ID, APPLE_PASSWORD (app-specific password), APPLE_TEAM_ID
+#   Windows:      AZURE_CLIENT_ID, AZURE_CLIENT_SECRET, AZURE_TENANT_ID + variables AZURE_SIGNING_ENDPOINT,
+#                 AZURE_SIGNING_ACCOUNT, AZURE_CERT_PROFILE (Azure Trusted Signing)
+name: Release VAVU desktop (Mac only)
+
+on:
+  workflow_dispatch:
+    inputs:
+      runner:
+        description: 'Mac runner (try another if one is busy)'
+        type: choice
+        default: macos-15-intel
+        options: [macos-15-intel, macos-15, macos-14, macos-latest]
+      tag:
+        description: 'Release tag to add the Mac installer to'
+        default: 'v1.0.0'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: mac
+            args: --target universal-apple-darwin
+    runs-on: ${{ inputs.runner }}
+    env:
+      HAS_UPDATER_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY != '' }}
+      HAS_WIN_SIGNING: ${{ secrets.AZURE_CLIENT_ID != '' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ true && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
+
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: './src-tauri -> target'
+
+      - run: npm ci || npm install
+
+      # Auto-update: turn on updater files + public key only when the signing key exists.
+      - name: Enable auto-update
+        if: env.HAS_UPDATER_KEY == 'true'
+        shell: bash
+        run: |
+          node -e "
+            const fs=require('fs'); const p='src-tauri/tauri.conf.json'; const c=JSON.parse(fs.readFileSync(p,'utf8'));
+            c.bundle.createUpdaterArtifacts=true; c.plugins.updater.pubkey=process.env.PUBKEY; fs.writeFileSync(p, JSON.stringify(c,null,2));"
+        env:
+          PUBKEY: ${{ vars.TAURI_UPDATER_PUBKEY }}
+
+      # Windows code signing with Azure Trusted Signing (only if set up).
+      - name: Windows signing setup
+        if: false && env.HAS_WIN_SIGNING == 'true'
+        shell: pwsh
+        run: |
+          dotnet tool install --global AzureSignTool --version 6.0.1 2>$null; cargo install trusted-signing-cli --locked
+          $conf = Get-Content src-tauri/tauri.conf.json -Raw | ConvertFrom-Json
+          $cmd = "trusted-signing-cli -e ${{ vars.AZURE_SIGNING_ENDPOINT }} -a ${{ vars.AZURE_SIGNING_ACCOUNT }} -c ${{ vars.AZURE_CERT_PROFILE }} -d VAVU %1"
+          $conf.bundle.windows | Add-Member -NotePropertyName signCommand -NotePropertyValue $cmd -Force
+          $conf | ConvertTo-Json -Depth 20 | Set-Content src-tauri/tauri.conf.json
+
+      # Pass only the signing secrets that exist (an empty value would make the build try to sign and fail).
+      - name: Signing environment
+        shell: bash
+        run: |
+          for k in TAURI_SIGNING_PRIVATE_KEY TAURI_SIGNING_PRIVATE_KEY_PASSWORD APPLE_CERTIFICATE APPLE_CERTIFICATE_PASSWORD APPLE_SIGNING_IDENTITY APPLE_ID APPLE_PASSWORD APPLE_TEAM_ID AZURE_CLIENT_ID AZURE_CLIENT_SECRET AZURE_TENANT_ID; do
+            v="${!k}"; if [ -n "$v" ]; then { echo "$k<<__EOF__"; echo "$v"; echo "__EOF__"; } >> "$GITHUB_ENV"; fi
+          done
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          APPLE_CERTIFICATE: ${{ true && secrets.APPLE_CERTIFICATE || '' }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ true && secrets.APPLE_CERTIFICATE_PASSWORD || '' }}
+          APPLE_SIGNING_IDENTITY: ${{ true && secrets.APPLE_SIGNING_IDENTITY || '' }}
+          APPLE_ID: ${{ true && secrets.APPLE_ID || '' }}
+          APPLE_PASSWORD: ${{ true && secrets.APPLE_PASSWORD || '' }}
+          APPLE_TEAM_ID: ${{ true && secrets.APPLE_TEAM_ID || '' }}
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+
+      - uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: ${{ inputs.tag }}
+          releaseName: 'VAVU __VERSION__'
+          releaseBody: 'Download VAVU for Windows or Mac at https://joinvavu.com/download'
+          releaseDraft: false
+          prerelease: false
+          includeUpdaterJson: ${{ env.HAS_UPDATER_KEY == 'true' }}
+          args: ${{ matrix.args }}
