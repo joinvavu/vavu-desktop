@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>NSCameraUsageDescription</key>
+  <string>VAVU uses your camera for Practice Your Interview, only while a practice interview is running.</string>
+  <key>NSMicrophoneUsageDescription</key>
+  <string>VAVU uses your microphone for Practice Your Interview and voice questions to Coach VAVU.</string>
+</dict>
+</plist>
