@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "VAVU",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "identifier": "com.joinvavu.app",
   "build": {
     "frontendDist": "../dist"
@@ -11,39 +11,77 @@
     "windows": [],
     "security": {
       "csp": null,
-      "capabilities": ["default", "remote-vavu"]
+      "capabilities": [
+        "default",
+        "remote-vavu"
+      ]
     }
   },
   "bundle": {
     "active": true,
-    "targets": ["nsis", "msi", "app", "dmg"],
+    "targets": [
+      "nsis",
+      "msi",
+      "app",
+      "dmg"
+    ],
     "publisher": "VAVU",
     "category": "Education",
     "shortDescription": "VAVU: Virtual Assistant, Value Unlocked",
     "longDescription": "Learn virtual assistant skills step by step with VAVU: lessons in English or Tagalog, Coach VAVU, practice interviews, and a CV and portfolio that grow as you learn.",
     "copyright": "© 2026 VAVU",
     "homepage": "https://joinvavu.com",
-    "icon": ["icons/32x32.png", "icons/128x128.png", "icons/128x128@2x.png", "icons/icon.icns", "icons/icon.ico"],
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
     "createUpdaterArtifacts": false,
     "windows": {
-      "webviewInstallMode": { "type": "downloadBootstrapper", "silent": true },
-      "nsis": { "installMode": "currentUser", "displayLanguageSelector": false, "installerIcon": "icons/icon.ico" },
-      "wix": { "language": "en-US" }
+      "webviewInstallMode": {
+        "type": "downloadBootstrapper",
+        "silent": true
+      },
+      "nsis": {
+        "installMode": "currentUser",
+        "displayLanguageSelector": false,
+        "installerIcon": "icons/icon.ico"
+      },
+      "wix": {
+        "language": "en-US"
+      }
     },
     "macOS": {
       "minimumSystemVersion": "11.0",
       "entitlements": "Entitlements.plist",
-      "dmg": { "windowSize": { "width": 600, "height": 380 } }
+      "dmg": {
+        "windowSize": {
+          "width": 600,
+          "height": 380
+        }
+      },
+      "signingIdentity": "-",
+      "hardenedRuntime": true
     }
   },
   "plugins": {
     "deep-link": {
-      "desktop": { "schemes": ["vavu"] }
+      "desktop": {
+        "schemes": [
+          "vavu"
+        ]
+      }
     },
     "updater": {
       "pubkey": "",
-      "endpoints": ["https://github.com/joinvavu/vavu-desktop/releases/latest/download/latest.json"],
-      "windows": { "installMode": "passive" }
+      "endpoints": [
+        "https://github.com/joinvavu/vavu-desktop/releases/latest/download/latest.json"
+      ],
+      "windows": {
+        "installMode": "passive"
+      }
     }
   }
 }

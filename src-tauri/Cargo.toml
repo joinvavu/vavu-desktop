@@ -1,6 +1,6 @@
 [package]
 name = "vavu"
-version = "1.0.0"
+version = "1.0.1"
 description = "VAVU: Virtual Assistant, Value Unlocked"
 authors = ["VAVU"]
 edition = "2021"
