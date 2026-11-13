@@ -3,7 +3,7 @@
 //! - Google sign-in opens in the computer's normal browser (Google blocks embedded windows),
 //!   then comes back through the vavu:// link and finishes inside the app.
 //! - Links to other sites open in the normal browser; payments stay inside.
-//! - Downloads (CV, certificates) go to the Downloads folder.
+//! - Downloads (CV, certificates) go to the Downloads folder. Lesson videos and audio are never downloaded as files.
 //! - Checks for app updates on start and installs them.
 
 use std::path::PathBuf;
@@ -90,6 +90,21 @@ fn handle_deep_link(app: &AppHandle, url: &Url) {
     focus(app);
 }
 
+/// Lesson media never leaves the app as a file: saved offline lessons, lesson videos and audio play only inside VAVU.
+/// Blocks "Save video as…" and any download of lesson files (CVs, certificates and other documents still download).
+fn is_lesson_media(url: &Url) -> bool {
+    if matches!(url.scheme(), "blob" | "data") {
+        return true;
+    }
+    let host = url.host_str().unwrap_or("");
+    let path = url.path().to_ascii_lowercase();
+    path.starts_with("/offline-media/")
+        || path.starts_with("/api/offline/")
+        || host.ends_with(".b-cdn.net")
+        || host.ends_with(".mediadelivery.net")
+        || [".mp4", ".m4a", ".m4v", ".m3u8", ".ts", ".webm", ".mov", ".aac", ".mp3"].iter().any(|ext| path.ends_with(ext))
+}
+
 fn file_name(path: &PathBuf) -> String {
     path.file_name().map(|s| s.to_string_lossy().to_string()).unwrap_or_else(|| "file".into())
 }
@@ -162,7 +177,10 @@ pub fn run() {
                 })
                 .on_download(move |_webview, event| {
                     match event {
-                        DownloadEvent::Requested { destination, .. } => {
+                        DownloadEvent::Requested { url, destination } => {
+                            if is_lesson_media(&url) {
+                                return false;
+                            }
                             // Save into the Downloads folder with the site's file name.
                             if destination.parent().map(|p| p.as_os_str().is_empty()).unwrap_or(true) {
                                 if let Ok(dir) = dl.path().download_dir() {

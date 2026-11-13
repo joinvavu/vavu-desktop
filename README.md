@@ -12,7 +12,9 @@ Download: **https://joinvavu.com/download**
 - Every website update appears in the app right away. App updates (rare) install automatically.
 - Google sign-in opens in the computer's normal browser, then returns to the app through a `vavu://` link.
 - Links to other websites open in the normal browser. Payments (QR Ph) stay inside the app.
-- Downloads go to the Downloads folder. Camera and microphone are asked for only on Practice Your Interview.
+- Downloads (CV, certificates) go to the Downloads folder. Lesson videos and audio are never downloaded as files:
+  saved offline lessons stay encrypted inside the app (Offline Learning Mode, see joinvavu/vavu docs/OFFLINE.md).
+- Camera and microphone are asked for only on Practice Your Interview.
 
 ## Release a new version
 1. Bump `version` in `src-tauri/tauri.conf.json` and `src-tauri/Cargo.toml`.
